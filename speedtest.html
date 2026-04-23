@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Test zasięgu — Plus</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 36px 28px;
+            max-width: 380px;
+            width: 100%;
+            box-shadow: 0 4px 32px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        .logo { color: #0057b8; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
+        .salon-name { color: #888; font-size: 13px; margin-bottom: 28px; min-height: 18px; }
+        .step { display: none; }
+        .step.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Ikony */
+        .icon { font-size: 56px; margin-bottom: 16px; display: block; }
+
+        h2 { font-size: 20px; font-weight: 700; color: #1a1a1a; margin-bottom: 10px; line-height: 1.3; }
+        p { color: #666; font-size: 15px; line-height: 1.6; margin-bottom: 22px; }
+        p strong { color: #1a1a1a; }
+
+        .btn {
+            background: #0057b8;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 16px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+        .btn:active { opacity: 0.8; }
+
+        /* Spinner */
+        .spinner-wrap { margin: 8px auto 24px; }
+        .spinner {
+            width: 68px; height: 68px;
+            border: 5px solid #e8eef6;
+            border-top-color: #0057b8;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .progress-text { color: #888; font-size: 14px; }
+
+        /* Wynik */
+        .result-number { font-size: 64px; font-weight: 800; color: #0057b8; line-height: 1; margin: 8px 0 2px; }
+        .result-unit { font-size: 17px; color: #888; margin-bottom: 4px; }
+        .result-sub { font-size: 13px; color: #bbb; margin-bottom: 20px; }
+        .badge {
+            display: inline-block;
+            padding: 8px 22px;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 22px;
+        }
+        .badge-ok { background: #e8f5e9; color: #2e7d32; }
+        .badge-bad { background: #fdecea; color: #b71c1c; }
+        .saved-msg { color: #2e7d32; font-size: 14px; font-weight: 500; }
+
+        /* Error */
+        .btn-secondary {
+            background: transparent;
+            color: #0057b8;
+            border: 2px solid #0057b8;
+            border-radius: 14px;
+            padding: 14px 28px;
+            font-size: 15px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+
+        .divider { height: 1px; background: #f0f0f0; margin: 20px 0; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="logo">Plus</div>
+    <div class="salon-name" id="salonDisplay">Wczytuję dane salonu...</div>
+
+    <!-- KROK 1: Przypomnienie o WiFi -->
+    <div class="step active" id="step-wifi">
+        <span class="icon">📵</span>
+        <h2>Wyłącz WiFi przed testem</h2>
+        <p>Test mierzy jakość sieci <strong>komórkowej Plus</strong>.<br>
+        Wejdź w ustawienia telefonu, wyłącz WiFi i wróć tutaj.</p>
+        <button class="btn" onclick="startTest()">WiFi wyłączone — zaczynam test</button>
+    </div>
+
+    <!-- KROK 2: Test w toku -->
+    <div class="step" id="step-testing">
+        <div class="spinner-wrap">
+            <div class="spinner"></div>
+        </div>
+        <h2>Trwa pomiar...</h2>
+        <p>Nie zamykaj strony.<br>Potrwa około 20–30 sekund.</p>
+        <div class="progress-text" id="progressText">Pobieranie lokalizacji...</div>
+    </div>
+
+    <!-- KROK 3: Wynik -->
+    <div class="step" id="step-result">
+        <span class="icon">✅</span>
+        <div class="result-number" id="resultValue">—</div>
+        <div class="result-unit">Mb/s download</div>
+        <div class="result-sub">średnia z 3 pomiarów</div>
+        <div class="badge" id="resultBadge"></div>
+        <div class="divider"></div>
+        <div class="saved-msg">✓ Wynik został zapisany automatycznie</div>
+    </div>
+
+    <!-- KROK 4: Błąd połączenia -->
+    <div class="step" id="step-error">
+        <span class="icon">⚠️</span>
+        <h2>Błąd pomiaru</h2>
+        <p>Nie udało się przeprowadzić testu lub zapisać wyniku.<br>
+        Upewnij się że masz połączenie z siecią komórkową Plus.</p>
+        <button class="btn" onclick="location.reload()">Spróbuj ponownie</button>
+        <button class="btn-secondary" onclick="reportNoSignal()">Zgłoś brak zasięgu</button>
+    </div>
+</div>
+
+<script>
+// ─── KONFIGURACJA ────────────────────────────────────────────────────────────
+const WEBHOOK_URL = 'https://defaulte627a4cd356c493489de1758b5605e.af.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/16327ef2bd204a61b95f6e07cb2763e2/triggers/manual/paths/invoke?api-version=1';
+
+const SALONY = {
+    'CH_JURAJSKA':       'CH Jurajska, Częstochowa',
+    'CH_AUCHAN_BB':      'CH Auchan, Bielsko Biała',
+    'POZNAN_GLOWNY':     'Poznań Główny',
+    'GALERIA_GALENA':    'Galeria Galena, Jaworzno',
+    'CH_AUCHAN_HETM':    'CH Auchan Hetmańska, Białystok',
+    'CH_POGORIA':        'CH Pogoria, Dąbrowa Górnicza',
+    'CH_ATRIUM_PLEJADA': 'CH Atrium Plejada, Bytom',
+    'POS_PRZYSUCHA':     'POS Przysucha',
+    'CH_MAGNOLIA':       'CH Magnolia, Wrocław',
+    'CH_TRZY_KORONY':    'CH Trzy Korony, Nowy Sącz',
+    'CH_JANKI':          'CH JANKI, Janki',
+    'CH_DOMINIKANSKA':   'CH Galeria Dominikańska, Wrocław',
+    'POS_ZWOLEN':        'POS Zwoleń',
+    'POS_CHELM':         'POS Chełm',
+    'CH_M1_ZABRZE':      'CH M1, Zabrze',
+    'POS_SZYDLOWIEC':    'POS Szydłowiec',
+    'CH_AUCHAN_RAC':     'CH Auchan, Racibórz',
+    'POS_WYSOKIE_MAZ':   'POS Wysokie Mazowieckie',
+    'POS_GRODZISK':      'POS Grodzisk Mazowiecki',
+    'CH_PLEJADA_SOS':    'CH Plejada, Sosnowiec',
+    'CH_WROCLAVIA':      'CH Wroclavia, Wrocław',
+    'POS_NASIELSK':      'POS Nasielsk',
+    'GALERIA_JASTRZEBIE':'Galeria Jastrzębie, Jastrzębie Zdrój',
+    'GALERIA_KORONA':    'Galeria Korona, Kielce',
+    'POS_NOWY_DWOR':     'POS Nowy Dwór Mazowiecki',
+    'GALERIA_SWIDNICKA': 'Galeria Świdnicka, Świdnica',
+    'CH_STELA':          'CH Stela, Cieszyn',
+    'CH_DEKADA':         'CH Dekada, Nysa',
+    'CH_BRAMA_JURY':     'CH Brama Jury, Zawiercie',
+    'POS_PULTUSK':       'POS Pułtusk'
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
+const params  = new URLSearchParams(window.location.search);
+const salonId = params.get('salon') || 'NIEZNANY';
+const salonNazwa = SALONY[salonId] || salonId;
+document.getElementById('salonDisplay').textContent = salonNazwa;
+
+function showStep(id) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById('step-' + id).classList.add('active');
+}
+
+function setProgress(text) {
+    const el = document.getElementById('progressText');
+    if (el) el.textContent = text;
+}
+
+async function getGPS() {
+    return new Promise(resolve => {
+        if (!navigator.geolocation) { resolve({ lat: null, lon: null }); return; }
+        navigator.geolocation.getCurrentPosition(
+            p => resolve({ lat: p.coords.latitude.toFixed(6), lon: p.coords.longitude.toFixed(6) }),
+            () => resolve({ lat: null, lon: null }),
+            { timeout: 6000, enableHighAccuracy: false }
+        );
+    });
+}
+
+async function singleSpeedTest(bytes) {
+    const url = `https://speed.cloudflare.com/__down?bytes=${bytes}&r=${Math.random()}`;
+    const t0 = performance.now();
+    const res = await fetch(url, { cache: 'no-store' });
+    await res.blob();
+    const dt = (performance.now() - t0) / 1000;
+    return (bytes * 8) / dt / 1_000_000; // Mbps
+}
+
+async function measureSpeed() {
+    const sizes = [2_000_000, 5_000_000, 10_000_000];
+    const results = [];
+    for (let i = 0; i < sizes.length; i++) {
+        setProgress(`Pomiar ${i + 1} z ${sizes.length}...`);
+        results.push(await singleSpeedTest(sizes[i]));
+    }
+    // Usuń najniższy, uśrednij pozostałe
+    results.sort((a, b) => a - b);
+    results.shift();
+    return results.reduce((a, b) => a + b, 0) / results.length;
+}
+
+async function sendResult(payload) {
+    await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+}
+
+async function startTest() {
+    showStep('testing');
+    setProgress('Pobieranie lokalizacji...');
+
+    try {
+        const gps = await getGPS();
+        setProgress('Pomiar 1 z 3...');
+        const speedMbps = await measureSpeed();
+        const rounded = Math.round(speedMbps * 10) / 10;
+        const now = new Date();
+
+        // Pokaż wynik
+        document.getElementById('resultValue').textContent = rounded.toFixed(1).replace('.', ',');
+        const badge = document.getElementById('resultBadge');
+        if (speedMbps < 15) {
+            badge.textContent = '⚠ Słaby zasięg';
+            badge.className = 'badge badge-bad';
+        } else {
+            badge.textContent = '✓ Zasięg wystarczający';
+            badge.className = 'badge badge-ok';
+        }
+        showStep('result');
+
+        // Wyślij do Power Automate (błąd wysyłki nie niszczy ekranu wyniku)
+        try {
+            await sendResult({
+                salon_id:    salonId,
+                salon_nazwa: salonNazwa,
+                data:        now.toISOString().split('T')[0],
+                godzina:     now.toTimeString().substring(0, 8),
+                download_mbps: rounded,
+                gps_lat:     gps.lat,
+                gps_lon:     gps.lon,
+                status:      'test'
+            });
+        } catch (_) { /* webhook nie skonfigurowany lub niedostępny */ }
+
+    } catch (e) {
+        showStep('error');
+    }
+}
+
+function reportNoSignal() {
+    window.location.href = `brak-sygnalu.html?salon=${salonId}`;
+}
+</script>
+</body>
+</html>

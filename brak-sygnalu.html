@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Brak zasięgu — Plus</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 36px 28px;
+            max-width: 380px;
+            width: 100%;
+            box-shadow: 0 4px 32px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        .logo { color: #0057b8; font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+        .salon-name { color: #888; font-size: 13px; margin-bottom: 28px; }
+        .icon { font-size: 64px; display: block; margin-bottom: 20px; }
+        h2 { font-size: 20px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px; }
+        p { color: #666; font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+        .btn {
+            background: #b71c1c;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 18px 28px;
+            font-size: 17px;
+            font-weight: 700;
+            width: 100%;
+            cursor: pointer;
+        }
+        .btn:active { opacity: 0.8; }
+        .step { display: none; }
+        .step.active { display: block; }
+        .saved { color: #2e7d32; font-size: 15px; font-weight: 600; margin-top: 8px; }
+        .spinner {
+            width: 48px; height: 48px;
+            border: 4px solid #e8eef6;
+            border-top-color: #0057b8;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="logo">Plus</div>
+    <div class="salon-name" id="salonDisplay"></div>
+
+    <!-- Krok 1: Zgłoś -->
+    <div class="step active" id="step-report">
+        <span class="icon">📵</span>
+        <h2>Brak zasięgu w salonie</h2>
+        <p>Naciśnij przycisk aby zgłosić brak zasięgu sieci komórkowej Plus w Twoim salonie.</p>
+        <button class="btn" onclick="zglos()">Zgłoś brak zasięgu</button>
+    </div>
+
+    <!-- Krok 2: Wysyłanie -->
+    <div class="step" id="step-sending">
+        <div class="spinner"></div>
+        <h2>Wysyłanie zgłoszenia...</h2>
+    </div>
+
+    <!-- Krok 3: Potwierdzenie -->
+    <div class="step" id="step-done">
+        <span class="icon">✅</span>
+        <h2>Zgłoszenie wysłane</h2>
+        <p>Twoje zgłoszenie braku zasięgu zostało zapisane. Dziękujemy!</p>
+        <div class="saved">Możesz zamknąć tę stronę.</div>
+    </div>
+
+    <!-- Krok 4: Brak internetu nawet do wysłania -->
+    <div class="step" id="step-offline">
+        <span class="icon">🔴</span>
+        <h2>Brak połączenia</h2>
+        <p>Nie udało się wysłać zgłoszenia — brak jakiegokolwiek połączenia z internetem.<br><br>
+        Wyjdź z salonu, złap zasięg i spróbuj ponownie.</p>
+        <button class="btn" style="background:#0057b8;margin-top:8px" onclick="location.reload()">Spróbuj ponownie</button>
+    </div>
+</div>
+
+<script>
+const WEBHOOK_URL = 'https://defaulte627a4cd356c493489de1758b5605e.af.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/16327ef2bd204a61b95f6e07cb2763e2/triggers/manual/paths/invoke?api-version=1';
+
+const SALONY = {
+    'CH_JURAJSKA':       'CH Jurajska, Częstochowa',
+    'CH_AUCHAN_BB':      'CH Auchan, Bielsko Biała',
+    'POZNAN_GLOWNY':     'Poznań Główny',
+    'GALERIA_GALENA':    'Galeria Galena, Jaworzno',
+    'CH_AUCHAN_HETM':    'CH Auchan Hetmańska, Białystok',
+    'CH_POGORIA':        'CH Pogoria, Dąbrowa Górnicza',
+    'CH_ATRIUM_PLEJADA': 'CH Atrium Plejada, Bytom',
+    'POS_PRZYSUCHA':     'POS Przysucha',
+    'CH_MAGNOLIA':       'CH Magnolia, Wrocław',
+    'CH_TRZY_KORONY':    'CH Trzy Korony, Nowy Sącz',
+    'CH_JANKI':          'CH JANKI, Janki',
+    'CH_DOMINIKANSKA':   'CH Galeria Dominikańska, Wrocław',
+    'POS_ZWOLEN':        'POS Zwoleń',
+    'POS_CHELM':         'POS Chełm',
+    'CH_M1_ZABRZE':      'CH M1, Zabrze',
+    'POS_SZYDLOWIEC':    'POS Szydłowiec',
+    'CH_AUCHAN_RAC':     'CH Auchan, Racibórz',
+    'POS_WYSOKIE_MAZ':   'POS Wysokie Mazowieckie',
+    'POS_GRODZISK':      'POS Grodzisk Mazowiecki',
+    'CH_PLEJADA_SOS':    'CH Plejada, Sosnowiec',
+    'CH_WROCLAVIA':      'CH Wroclavia, Wrocław',
+    'POS_NASIELSK':      'POS Nasielsk',
+    'GALERIA_JASTRZEBIE':'Galeria Jastrzębie, Jastrzębie Zdrój',
+    'GALERIA_KORONA':    'Galeria Korona, Kielce',
+    'POS_NOWY_DWOR':     'POS Nowy Dwór Mazowiecki',
+    'GALERIA_SWIDNICKA': 'Galeria Świdnicka, Świdnica',
+    'CH_STELA':          'CH Stela, Cieszyn',
+    'CH_DEKADA':         'CH Dekada, Nysa',
+    'CH_BRAMA_JURY':     'CH Brama Jury, Zawiercie',
+    'POS_PULTUSK':       'POS Pułtusk'
+};
+
+const params = new URLSearchParams(window.location.search);
+const salonId = params.get('salon') || 'NIEZNANY';
+const salonNazwa = SALONY[salonId] || salonId;
+document.getElementById('salonDisplay').textContent = salonNazwa;
+
+function showStep(id) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById('step-' + id).classList.add('active');
+}
+
+async function zglos() {
+    showStep('sending');
+    const now = new Date();
+    try {
+        await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                salon_id:      salonId,
+                salon_nazwa:   salonNazwa,
+                data:          now.toISOString().split('T')[0],
+                godzina:       now.toTimeString().substring(0, 8),
+                download_mbps: 0,
+                gps_lat:       null,
+                gps_lon:       null,
+                status:        'brak_sygnalu'
+            })
+        });
+    } catch (_) { /* webhook nie skonfigurowany */ }
+    showStep('done');
+}
+</script>
+</body>
+</html>
