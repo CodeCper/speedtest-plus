@@ -81,6 +81,22 @@
         .badge-bad { background: #fdecea; color: #b71c1c; }
         .saved-msg { color: #2e7d32; font-size: 14px; font-weight: 500; }
 
+        /* Zgłoszenie przy dobrym wyniku */
+        .result-number.good { color: #2e7d32; }
+        .zgloszenie-question { font-size: 15px; color: #1a1a1a; font-weight: 600; margin-bottom: 12px; }
+        .zgloszenie-input {
+            width: 100%;
+            border: 2px solid #e8eef6;
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            margin-bottom: 6px;
+        }
+        .zgloszenie-input:focus { outline: none; border-color: #0057b8; }
+        .char-count { font-size: 12px; color: #bbb; text-align: right; margin-bottom: 18px; }
+
         /* Error */
         .btn-secondary {
             background: transparent;
@@ -129,8 +145,17 @@
         <div class="result-unit">Mb/s download</div>
         <div class="result-sub">średnia z 3 pomiarów</div>
         <div class="badge" id="resultBadge"></div>
-        <div class="divider"></div>
-        <div class="saved-msg">✓ Wynik został zapisany automatycznie</div>
+
+        <div id="zgloszenieBlock" style="display:none;">
+            <div class="divider"></div>
+            <div class="zgloszenie-question">Jaki jest powód Twojego zgłoszenia?</div>
+            <textarea class="zgloszenie-input" id="zgloszenieInput" rows="3" maxlength="200" placeholder="Opisz krótko, dlaczego zgłosiłeś problem z zasięgiem..." oninput="updateCharCount()"></textarea>
+            <div class="char-count" id="charCount">0/200</div>
+            <button class="btn" onclick="submitZgloszenie()">Wyślij</button>
+        </div>
+
+        <div class="divider" id="savedDivider" style="display:none;"></div>
+        <div class="saved-msg" id="savedMsg" style="display:none;">✓ Wynik został zapisany automatycznie</div>
     </div>
 
     <!-- KROK 4: Błąd połączenia -->
@@ -238,6 +263,8 @@ async function sendResult(payload) {
     });
 }
 
+let pendingPayload = null;
+
 async function startTest() {
     showStep('testing');
     setProgress('Pobieranie lokalizacji...');
@@ -250,9 +277,12 @@ async function startTest() {
         const now = new Date();
 
         // Pokaż wynik
-        document.getElementById('resultValue').textContent = rounded.toFixed(1).replace('.', ',');
+        const resultValueEl = document.getElementById('resultValue');
+        resultValueEl.textContent = rounded.toFixed(1).replace('.', ',');
+        resultValueEl.classList.toggle('good', rounded >= 20);
+
         const badge = document.getElementById('resultBadge');
-        if (speedMbps < 15) {
+        if (speedMbps < 20) {
             badge.textContent = '⚠ Słaby zasięg';
             badge.className = 'badge badge-bad';
         } else {
@@ -261,23 +291,48 @@ async function startTest() {
         }
         showStep('result');
 
-        // Wyślij do Power Automate (błąd wysyłki nie niszczy ekranu wyniku)
-        try {
-            await sendResult({
-                salon_id:    salonId,
-                salon_nazwa: salonNazwa,
-                data:        now.toISOString().split('T')[0],
-                godzina:     now.toTimeString().substring(0, 8),
-                download_mbps: rounded,
-                gps_lat:     gps.lat,
-                gps_lon:     gps.lon,
-                status:      'test'
-            });
-        } catch (_) { /* webhook nie skonfigurowany lub niedostępny */ }
+        pendingPayload = {
+            salon_id:    salonId,
+            salon_nazwa: salonNazwa,
+            data:        now.toISOString().split('T')[0],
+            godzina:     now.toTimeString().substring(0, 8),
+            download_mbps: rounded,
+            gps_lat:     gps.lat,
+            gps_lon:     gps.lon,
+            status:      'test',
+            powod_zgloszenia: ''
+        };
+
+        if (rounded >= 20) {
+            document.getElementById('zgloszenieBlock').style.display = 'block';
+        } else {
+            await finalizeResult();
+        }
 
     } catch (e) {
         showStep('error');
     }
+}
+
+function updateCharCount() {
+    const len = document.getElementById('zgloszenieInput').value.length;
+    document.getElementById('charCount').textContent = `${len}/200`;
+}
+
+async function submitZgloszenie() {
+    pendingPayload.powod_zgloszenia = document.getElementById('zgloszenieInput').value.trim();
+    document.getElementById('zgloszenieBlock').style.display = 'none';
+    await finalizeResult();
+}
+
+async function finalizeResult() {
+    // Wyślij wynik (błąd wysyłki nie niszczy ekranu wyniku)
+    try {
+        await sendResult(pendingPayload);
+    } catch (_) { /* webhook nie skonfigurowany lub niedostępny */ }
+
+    document.getElementById('savedDivider').style.display = 'block';
+    document.getElementById('savedMsg').style.display = 'block';
 }
 
 function reportNoSignal() {
