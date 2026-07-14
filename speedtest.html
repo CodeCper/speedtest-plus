@@ -206,6 +206,40 @@ const SALONY = {
     'POS_PULTUSK':       'POS Pułtusk',
     'CH_NOVAPARK_GRW':   'CH NovaPark, Gorzów Wlkp.'
 };
+
+const SFID = {
+    'CH_JURAJSKA':       '20002077',
+    'CH_AUCHAN_BB':      '20002027',
+    'POZNAN_GLOWNY':     '20001840',
+    'GALERIA_GALENA':    '20005042',
+    'CH_AUCHAN_HETM':    '20001895',
+    'CH_POGORIA':        '20005039',
+    'CH_ATRIUM_PLEJADA': '20001181',
+    'POS_PRZYSUCHA':     '20001174',
+    'CH_MAGNOLIA':       '20001968',
+    'CH_TRZY_KORONY':    '20005012',
+    'CH_JANKI':          '20001407',
+    'CH_DOMINIKANSKA':   '20000087',
+    'POS_ZWOLEN':        '20003041',
+    'POS_CHELM':         '20001766',
+    'CH_M1_ZABRZE':      '20001182',
+    'POS_SZYDLOWIEC':    '20001278',
+    'CH_AUCHAN_RAC':     '20002030',
+    'POS_WYSOKIE_MAZ':   '20001679',
+    'POS_GRODZISK':      '20003002',
+    'CH_PLEJADA_SOS':    '20001320',
+    'CH_WROCLAVIA':      '20005056',
+    'POS_NASIELSK':      '20001555',
+    'GALERIA_JASTRZEBIE':'20000660',
+    'GALERIA_KORONA':    '20005028',
+    'POS_NOWY_DWOR':     '20000740',
+    'GALERIA_SWIDNICKA': '20000922',
+    'CH_STELA':          '20120080',
+    'CH_DEKADA':         '20005073',
+    'CH_BRAMA_JURY':     '20005078',
+    'POS_PULTUSK':       '20003023',
+    'CH_NOVAPARK_GRW':   '20001778'
+};
 // ─────────────────────────────────────────────────────────────────────────────
 
 const params  = new URLSearchParams(window.location.search);
@@ -295,6 +329,7 @@ async function startTest() {
         pendingPayload = {
             salon_id:    salonId,
             salon_nazwa: salonNazwa,
+            sfid:        SFID[salonId] || '',
             data:        now.toISOString().split('T')[0],
             godzina:     now.toTimeString().substring(0, 8),
             download_mbps: rounded,
